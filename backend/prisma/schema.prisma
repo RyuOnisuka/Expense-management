@@ -1,0 +1,59 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         Int          @id @default(autoincrement())
+  email      String       @unique
+  name       String
+  password   String
+  avatarUrl  String?
+  cards      CreditCard[]
+  expenses   Expense[]
+  createdAt  DateTime     @default(now())
+}
+
+model CreditCard {
+  id                Int       @id @default(autoincrement())
+  name              String
+  statementCycleDay Int
+  dueDateDay        Int
+  userId            Int
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+}
+
+model Expense {
+  id           Int           @id @default(autoincrement())
+  title        String
+  totalAmount  Decimal       @db.Decimal(10, 2)
+  date         DateTime      @default(now())
+  userId       Int
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creditCardId Int?
+  creditCard   CreditCard?   @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  items        ExpenseItem[]
+}
+
+model ExpenseItem {
+  id        Int     @id @default(autoincrement())
+  expenseId Int
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  name      String
+  price     Decimal @db.Decimal(10, 2)
+  assignee  String
+}
+
+model Settlement {
+  id           Int      @id @default(autoincrement())
+  fromUserId   Int
+  toUserId     Int
+  amount       Decimal  @db.Decimal(10, 2)
+  isPaid       Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
