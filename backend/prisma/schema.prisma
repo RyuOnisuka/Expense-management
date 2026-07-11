@@ -8,52 +8,104 @@ generator client {
 }
 
 model User {
-  id         Int          @id @default(autoincrement())
-  email      String       @unique
-  name       String
-  password   String
-  avatarUrl  String?
-  cards      CreditCard[]
-  expenses   Expense[]
-  createdAt  DateTime     @default(now())
+  id          Int          @id @default(autoincrement())
+  email       String       @unique
+  name        String
+  code        String       @default("PK") // PK = owner, NC = shared person
+  password    String
+  avatarUrl   String?
+  color       String       @default("#6366f1")
+  cards       CreditCard[]
+  expenses    Expense[]
+  createdAt   DateTime     @default(now())
 }
 
 model CreditCard {
-  id                Int       @id @default(autoincrement())
+  id                Int           @id @default(autoincrement())
   name              String
-  statementCycleDay Int
-  dueDateDay        Int
+  bankName          String?
+  statementCycleDay Int           @default(25)
+  dueDateDay        Int           @default(5)
+  color             String        @default("#6366f1")
+  isActive          Boolean       @default(true)
   userId            Int
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses          Expense[]
+  installments      Installment[]
+}
+
+model PaymentApp {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  icon     String?
+  isActive Boolean   @default(true)
+  expenses Expense[]
+}
+
+model ExpenseCategory {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  icon     String?
+  color    String    @default("#6366f1")
+  expenses Expense[]
 }
 
 model Expense {
-  id           Int           @id @default(autoincrement())
-  title        String
-  totalAmount  Decimal       @db.Decimal(10, 2)
-  date         DateTime      @default(now())
-  userId       Int
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creditCardId Int?
-  creditCard   CreditCard?   @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
-  items        ExpenseItem[]
+  id                 Int              @id @default(autoincrement())
+  title              String
+  totalAmount        Decimal          @db.Decimal(10, 2)
+  pkAmount           Decimal          @default(0) @db.Decimal(10, 2)
+  ncAmount           Decimal          @default(0) @db.Decimal(10, 2)
+  paymentCode        String           @default("S") // P = Personal (PK only), S = Shared (PK+NC)
+  date               DateTime         @default(now())
+  dueDate            DateTime?
+  installmentCurrent Int              @default(0) // e.g. 3 from "003/006"
+  installmentTotal   Int              @default(0) // e.g. 6 from "003/006"
+  discountTax        Decimal          @default(0) @db.Decimal(10, 2)
+  userId             Int
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creditCardId       Int?
+  creditCard         CreditCard?      @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  paymentAppId       Int?
+  paymentApp         PaymentApp?      @relation(fields: [paymentAppId], references: [id], onDelete: SetNull)
+  categoryId         Int?
+  category           ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  items              ExpenseItem[]
 }
 
 model ExpenseItem {
-  id        Int     @id @default(autoincrement())
-  expenseId Int
-  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  name      String
-  price     Decimal @db.Decimal(10, 2)
-  assignee  String
+  id          Int     @id @default(autoincrement())
+  expenseId   Int
+  expense     Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  name        String
+  price       Decimal @db.Decimal(10, 2)
+  pkAmount    Decimal @default(0) @db.Decimal(10, 2)
+  ncAmount    Decimal @default(0) @db.Decimal(10, 2)
+  paymentCode String  @default("S")
+  assignee    String  @default("shared")
+}
+
+model Installment {
+  id            Int         @id @default(autoincrement())
+  name          String
+  totalAmount   Decimal     @db.Decimal(10, 2)
+  monthlyAmount Decimal     @db.Decimal(10, 2)
+  totalPeriods  Int
+  currentPeriod Int         @default(0)
+  startDate     DateTime
+  creditCardId  Int?
+  creditCard    CreditCard? @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  userId        Int
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
 }
 
 model Settlement {
-  id           Int      @id @default(autoincrement())
-  fromUserId   Int
-  toUserId     Int
-  amount       Decimal  @db.Decimal(10, 2)
-  isPaid       Boolean  @default(false)
-  updatedAt    DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  fromUserId Int
+  toUserId   Int
+  amount     Decimal  @db.Decimal(10, 2)
+  isPaid     Boolean  @default(false)
+  note       String?
+  updatedAt  DateTime @updatedAt
 }
